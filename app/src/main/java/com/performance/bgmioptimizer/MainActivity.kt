@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OptimizerApp() {
     var page by remember { mutableStateOf("Home") }
