@@ -1,16 +1,25 @@
 # BGMI Performance Optimizer
 
-A standalone Android companion app for BGMI players. It provides device-aware performance guidance, safe graphics and sensitivity presets, gyroscope reference settings, and device status information.
+A standalone Android gaming-session companion targeting the OnePlus 9.
 
-## Important limits
+## Current test build
 
-- This app does not modify BGMI files, memory, network traffic, or anti-cheat systems.
-- It does not inject aim assistance or remove recoil. It provides configurable in-game sensitivity recommendations only.
-- FPS options shown are targets, not unlocks. Actual frame rates depend on BGMI's supported device profile, game version, thermal state, and display settings.
-- The initial device profile targets the OnePlus 9 (Snapdragon 888, Adreno 660, 120 Hz display).
+- Launches the installed official BGMI app (`com.pubg.imobile`).
+- Offers optional Android Do Not Disturb control after the user grants notification-policy access. The app saves and restores the previous interruption filter.
+- Provides shortcuts to Android display and battery settings.
+- Displays live device memory, battery temperature, thermal state and display refresh rate.
+- Does not read or modify BGMI sensitivity, ADS, gyroscope, button layout or control size.
+
+## Important technical limits
+
+- This app does not inject code, modify BGMI files or memory, automate gameplay, bypass anti-cheat, or manipulate recoil/aim assist.
+- A third-party app cannot force BGMI to unlock 120 FPS or restricted graphics, change BGMI's internal frame pacing, or guarantee zero lag/hot-drop stability.
+- The phone's 120 Hz display refresh rate is not proof that BGMI is rendering at 120 FPS.
+- Actual performance depends on BGMI's supported device profile, game version, thermal conditions, network quality and server load.
+- The display and battery shortcuts open Android settings; they do not secretly force vendor-specific performance modes.
 
 ## Build
 
-Open this project in Android Studio (Giraffe or newer) and sync Gradle. Select **Build > Build APK(s)**. The debug APK is generated at `app/build/outputs/apk/debug/app-debug.apk`.
+GitHub Actions builds a debug APK using Gradle 8.9 and Java 17. The APK is uploaded as the workflow artifact `bgmi-performance-optimizer-debug`.
 
 Package: `com.performance.bgmioptimizer`
