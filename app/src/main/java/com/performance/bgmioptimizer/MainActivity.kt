@@ -1,11 +1,15 @@
 package com.performance.bgmioptimizer
 
+import android.app.ActivityManager
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -20,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
 private val Ink = Color(0xFF101522)
 private val Panel = Color(0xFF1B2638)
@@ -65,7 +72,7 @@ private fun OptimizerApp() {
         },
         bottomBar = {
             NavigationBar(containerColor = Panel, contentColor = Cyan) {
-                listOf("Home", "Graphics", "Scopes", "Device").forEach { item ->
+                listOf("Home", "Graphics", "Controls", "Device").forEach { item ->
                     NavigationBarItem(
                         selected = page == item,
                         onClick = { page = item },
@@ -73,7 +80,7 @@ private fun OptimizerApp() {
                             Icon(
                                 when (item) {
                                     "Graphics" -> Icons.Default.Tune
-                                    "Scopes" -> Icons.Default.CenterFocusStrong
+                                    "Controls" -> Icons.Default.Lock
                                     "Device" -> Icons.Default.Memory
                                     else -> Icons.Default.Dashboard
                                 }, contentDescription = item
@@ -110,7 +117,7 @@ private fun OptimizerApp() {
                     }
                     item { SectionTitle("Optimisation modules", "Practical settings guidance — no game-file changes") }
                     item { ModuleCard("Graphics & FPS", "Choose stable in-game graphics targets", Icons.Default.Tune) { page = "Graphics" } }
-                    item { ModuleCard("Controls protection", "This app never edits BGMI sensitivity or controls", Icons.Default.Lock) { page = "Scopes" } }
+                    item { ModuleCard("Controls protection", "This app never edits BGMI sensitivity or controls", Icons.Default.Lock) { page = "Controls" } }
                     item { ModuleCard("Device performance", "View hardware and thermal guidance", Icons.Default.Memory) { page = "Device" } }
                     item {
                         Text("Safety note: this companion app does not control BGMI, remove recoil, add aim assist, unlock unsupported FPS modes, or bypass anti-cheat.", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
@@ -123,19 +130,20 @@ private fun OptimizerApp() {
                     item { InfoCard("Stability first", "If frame pacing drops or the phone heats up, lower graphics one step, close background apps, remove the case during long sessions, and allow the phone to cool.") }
                     item { InfoCard("Avoid risky tools", "Do not use GFX config editors, modified game files, injectors, or third-party unlockers. They can cause instability or account penalties.") }
                 }
-                "Scopes" -> {
+                "Controls" -> {
                     item { SectionTitle("Controls protection", "Your BGMI settings remain exactly as you set them") }
                     item { InfoCard("No sensitivity changes", "This app will not change camera sensitivity, ADS sensitivity, gyroscope sensitivity, button layout, control size, or any other BGMI control setting.") }
                     item { InfoCard("No game modification", "The app does not access BGMI private data, edit game files, inject code, or automate in-game actions. You remain in full control of every setting.") }
                 }
                 "Device" -> {
-                    item { SectionTitle("Device status", "Detected locally from Android system information") }
+                    item { SectionTitle("Live device status", "Read-only Android telemetry; no BGMI settings are changed") }
+                    item { LiveDeviceMetrics() }
                     item { InfoCard("Model", Build.MODEL ?: "Not reported") }
                     item { InfoCard("Manufacturer", Build.MANUFACTURER ?: "Not reported") }
                     item { InfoCard("Android version", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})") }
                     item { InfoCard("Supported CPU ABIs", Build.SUPPORTED_ABIS.joinToString()) }
-                    item { InfoCard("Display target", "OnePlus 9 panel supports up to 120 Hz. Actual refresh rate and BGMI FPS may vary with system mode, game version, temperature, and battery state.") }
-                    item { InfoCard("Thermal care", "Avoid charging during long competitive sessions when possible. Reduce brightness if hot, keep vents unobstructed, and stop if the device becomes uncomfortably hot.") }
+                    item { InfoCard("Display refresh rate", "The live reading above is the Android display refresh rate, not BGMI's rendered FPS. Your OnePlus 9 panel supports up to 120 Hz.") }
+                    item { InfoCard("Thermal care", "If Android reports a severe thermal state, pause the session and let the phone cool. Avoid charging during long competitive sessions when possible.") }
                 }
                 else -> {
                     item { SectionTitle("Optimisation", "Performance guidance only") }
@@ -146,6 +154,59 @@ private fun OptimizerApp() {
     }
 }
 
+private data class DeviceMetrics(val availableRamMb: Long = 0, val totalRamMb: Long = 0, val batteryTempC: Float? = null, val thermalState: String = "Checking…")
+
+@Composable
+private fun LiveDeviceMetrics() {
+    val context = LocalContext.current
+    val view = LocalView.current
+    val refreshRate = view.display?.refreshRate
+    val metrics by produceState(initialValue = DeviceMetrics(), context) {
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        while (true) {
+            val memory = ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memory)
+            val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val tempRaw = battery?.getIntExtra("temperature", -1) ?: -1
+            val thermal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                when (powerManager.currentThermalStatus) {
+                    PowerManager.THERMAL_STATUS_NONE -> "Normal"
+                    PowerManager.THERMAL_STATUS_LIGHT -> "Light"
+                    PowerManager.THERMAL_STATUS_MODERATE -> "Moderate"
+                    PowerManager.THERMAL_STATUS_SEVERE -> "Severe"
+                    PowerManager.THERMAL_STATUS_CRITICAL -> "Critical"
+                    PowerManager.THERMAL_STATUS_EMERGENCY -> "Emergency"
+                    PowerManager.THERMAL_STATUS_SHUTDOWN -> "Shutdown risk"
+                    else -> "Unknown"
+                }
+            } else "Not exposed by this Android version"
+            value = DeviceMetrics(memory.availMem / (1024L * 1024L), memory.totalMem / (1024L * 1024L), if (tempRaw >= 0) tempRaw / 10f else null, thermal)
+            delay(3000)
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            MetricCard("Display", refreshRate?.let { "%.0f Hz".format(it) } ?: "Unavailable", Modifier.weight(1f))
+            MetricCard("Thermal state", metrics.thermalState, Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            MetricCard("Available RAM", if (metrics.totalRamMb > 0) "${metrics.availableRamMb} MB" else "Reading…", Modifier.weight(1f))
+            MetricCard("Battery temperature", metrics.batteryTempC?.let { "%.1f °C".format(it) } ?: "Unavailable", Modifier.weight(1f))
+        }
+        Text("Readings refresh automatically. Display Hz is not the same as game FPS; Android may limit or withhold some thermal readings.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+    }
+}
+
+@Composable
+private fun MetricCard(title: String, value: String, modifier: Modifier = Modifier) {
+    Card(modifier = modifier, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
+        Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, color = Muted, fontSize = 11.sp)
+            Text(value, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+    }
+}
 @Composable
 private fun SectionTitle(title: String, subtitle: String) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
