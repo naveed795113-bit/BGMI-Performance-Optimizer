@@ -167,6 +167,14 @@ private fun GamingSessionPanel() {
     var dndActive by remember { mutableStateOf(nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE) }
     var status by remember { mutableStateOf("Ready to prepare your session.") }
 
+    LaunchedEffect(Unit) {
+        while (true) {
+            dndGranted = nm.isNotificationPolicyAccessGranted
+            dndActive = nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
+            delay(1000)
+        }
+    }
+
     fun launchBgmi() {
         val intent = context.packageManager.getLaunchIntentForPackage("com.pubg.imobile")
         if (intent != null) {
