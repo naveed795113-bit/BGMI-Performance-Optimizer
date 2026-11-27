@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <queries>
+        <package android:name="com.pubg.imobile" />
+    </queries>
     <application android:allowBackup="true" android:label="BGMI Performance Optimizer" android:supportsRtl="true" android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
