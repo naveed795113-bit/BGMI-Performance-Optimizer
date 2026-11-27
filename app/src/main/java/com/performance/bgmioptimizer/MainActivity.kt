@@ -1,12 +1,14 @@
 package com.performance.bgmioptimizer
 
 import android.app.ActivityManager
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -73,7 +75,7 @@ private fun OptimizerApp() {
         },
         bottomBar = {
             NavigationBar(containerColor = Panel, contentColor = Cyan) {
-                listOf("Home", "Graphics", "Controls", "Device").forEach { item ->
+                listOf("Home", "Boost", "Graphics", "Device").forEach { item ->
                     NavigationBarItem(
                         selected = page == item,
                         onClick = { page = item },
@@ -81,7 +83,7 @@ private fun OptimizerApp() {
                             Icon(
                                 when (item) {
                                     "Graphics" -> Icons.Default.Tune
-                                    "Controls" -> Icons.Default.Lock
+                                    "Boost" -> Icons.Default.Bolt
                                     "Device" -> Icons.Default.Memory
                                     else -> Icons.Default.Dashboard
                                 }, contentDescription = item
@@ -117,8 +119,8 @@ private fun OptimizerApp() {
                         }
                     }
                     item { SectionTitle("Optimisation modules", "Practical settings guidance — no game-file changes") }
-                    item { ModuleCard("Graphics & FPS", "Choose stable in-game graphics targets", Icons.Default.Tune) { page = "Graphics" } }
-                    item { ModuleCard("Controls protection", "This app never edits BGMI sensitivity or controls", Icons.Default.Lock) { page = "Controls" } }
+                    item { ModuleCard("Gaming session", "Prepare the phone and launch BGMI", Icons.Default.Bolt) { page = "Boost" } }
+                    item { ModuleCard("Graphics & FPS", "Review supported in-game settings", Icons.Default.Tune) { page = "Graphics" } }
                     item { ModuleCard("Device performance", "View hardware and thermal guidance", Icons.Default.Memory) { page = "Device" } }
                     item {
                         Text("Safety note: this companion app does not control BGMI, remove recoil, add aim assist, unlock unsupported FPS modes, or bypass anti-cheat.", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
@@ -131,10 +133,12 @@ private fun OptimizerApp() {
                     item { InfoCard("Stability first", "If frame pacing drops or the phone heats up, lower graphics one step, close background apps, remove the case during long sessions, and allow the phone to cool.") }
                     item { InfoCard("Avoid risky tools", "Do not use GFX config editors, modified game files, injectors, or third-party unlockers. They can cause instability or account penalties.") }
                 }
-                "Controls" -> {
-                    item { SectionTitle("Controls protection", "Your BGMI settings remain exactly as you set them") }
-                    item { InfoCard("No sensitivity changes", "This app will not change camera sensitivity, ADS sensitivity, gyroscope sensitivity, button layout, control size, or any other BGMI control setting.") }
-                    item { InfoCard("No game modification", "The app does not access BGMI private data, edit game files, inject code, or automate in-game actions. You remain in full control of every setting.") }
+                "Boost" -> {
+                    item { SectionTitle("Gaming session", "Device-side preparation for BGMI on OnePlus 9") }
+                    item { GamingSessionPanel() }
+                    item { InfoCard("What this can do", "Launch BGMI, optionally silence interruptions with Android Do Not Disturb, and open the phone's own display and battery settings. These are device-side actions, not game modifications.") }
+                    item { InfoCard("What it cannot do", "A normal app cannot force BGMI to render at 120 FPS, unlock restricted graphics, control the game's frame pacing, or guarantee lag-free hot drops. Actual performance depends on BGMI support, temperature, network and server load.") }
+                    item { InfoCard("Controls stay untouched", "Camera sensitivity, ADS, gyroscope, button layout and control size are never read or changed.") }
                 }
                 "Device" -> {
                     item { SectionTitle("Live device status", "Read-only Android telemetry; no BGMI settings are changed") }
@@ -152,6 +156,77 @@ private fun OptimizerApp() {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GamingSessionPanel() {
+    val context = LocalContext.current
+    val nm = remember { context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
+    var dndGranted by remember { mutableStateOf(nm.isNotificationPolicyAccessGranted) }
+    var dndActive by remember { mutableStateOf(nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE) }
+    var status by remember { mutableStateOf("Ready to prepare your session.") }
+
+    fun launchBgmi() {
+        val intent = context.packageManager.getLaunchIntentForPackage("com.pubg.imobile")
+        if (intent != null) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            status = "BGMI launch requested."
+        } else {
+            status = "BGMI was not found. Install the official BGMI app first."
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        CardBlock {
+            Text("BGMI launch", color = Cyan, fontWeight = FontWeight.Bold)
+            Text("Open the installed official BGMI app. No game data is modified.", color = Muted, fontSize = 12.sp)
+            Button(onClick = { launchBgmi() }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.SportsEsports, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Launch BGMI")
+            }
+        }
+        CardBlock {
+            Text("Gaming Do Not Disturb", color = Cyan, fontWeight = FontWeight.Bold)
+            Text("Optional. Silences interruptions only after you grant Android notification-policy access. It does not increase FPS.", color = Muted, fontSize = 12.sp, lineHeight = 17.sp)
+            Text(if (dndActive) "Status: Do Not Disturb is active" else "Status: Do Not Disturb is off", color = Color.White, fontWeight = FontWeight.SemiBold)
+            Button(onClick = {
+                dndGranted = nm.isNotificationPolicyAccessGranted
+                if (!dndGranted) {
+                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    status = "Grant access in Android settings, then return to this page."
+                } else if (!dndActive) {
+                    val prefs = context.getSharedPreferences("gaming_session", Context.MODE_PRIVATE)
+                    prefs.edit().putInt("previous_filter", nm.currentInterruptionFilter).putBoolean("saved_filter", true).apply()
+                    nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+                    dndActive = true
+                    status = "Do Not Disturb enabled. Turn it off here after gaming."
+                } else {
+                    val prefs = context.getSharedPreferences("gaming_session", Context.MODE_PRIVATE)
+                    val previous = if (prefs.getBoolean("saved_filter", false)) prefs.getInt("previous_filter", NotificationManager.INTERRUPTION_FILTER_ALL) else NotificationManager.INTERRUPTION_FILTER_ALL
+                    nm.setInterruptionFilter(previous)
+                    prefs.edit().putBoolean("saved_filter", false).apply()
+                    dndActive = false
+                    status = "Previous interruption mode restored."
+                }
+            }, modifier = Modifier.fillMaxWidth()) {
+                Text(if (!dndGranted) "Grant DND access" else if (dndActive) "Turn DND off" else "Turn DND on")
+            }
+            Text("DND may silence calls and notifications. Check your exceptions before enabling it.", color = Muted, fontSize = 11.sp)
+        }
+        CardBlock {
+            Text("Phone settings", color = Cyan, fontWeight = FontWeight.Bold)
+            Text("Use the manufacturer's supported settings; this app does not force hidden performance modes.", color = Muted, fontSize = 12.sp)
+            OutlinedButton(onClick = { context.startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }, modifier = Modifier.fillMaxWidth()) {
+                Text("Open display settings")
+            }
+            OutlinedButton(onClick = { context.startActivity(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }, modifier = Modifier.fillMaxWidth()) {
+                Text("Open battery settings")
+            }
+        }
+        Text(status, color = Cyan, fontSize = 12.sp)
     }
 }
 
