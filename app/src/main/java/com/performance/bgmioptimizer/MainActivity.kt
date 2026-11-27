@@ -44,10 +44,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun OptimizerApp() {
     var page by remember { mutableStateOf("Home") }
-    var selectedScope by remember { mutableStateOf("Red Dot / Holo") }
-    var sensitivity by remember { mutableFloatStateOf(45f) }
-    var gyro by remember { mutableFloatStateOf(250f) }
-    var restored by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Ink,
@@ -114,10 +110,8 @@ private fun OptimizerApp() {
                     }
                     item { SectionTitle("Optimisation modules", "Practical settings guidance — no game-file changes") }
                     item { ModuleCard("Graphics & FPS", "Choose stable in-game graphics targets", Icons.Default.Tune) { page = "Graphics" } }
-                    item { ModuleCard("Scope sensitivity", "Separate camera and ADS reference values", Icons.Default.CenterFocusStrong) { page = "Scopes" } }
-                    item { ModuleCard("Gyroscope setup", "Tune gyro gradually for your play style", Icons.Default.ScreenRotation) { page = "Gyro" } }
+                    item { ModuleCard("Controls protection", "This app never edits BGMI sensitivity or controls", Icons.Default.Lock) { page = "Scopes" } }
                     item { ModuleCard("Device performance", "View hardware and thermal guidance", Icons.Default.Memory) { page = "Device" } }
-                    item { ModuleCard("Restore recommendations", "Return sliders to the starter profile", Icons.Default.Restore) { sensitivity = 45f; gyro = 250f; restored = true } }
                     item {
                         Text("Safety note: this companion app does not control BGMI, remove recoil, add aim assist, unlock unsupported FPS modes, or bypass anti-cheat.", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
                     }
@@ -130,39 +124,9 @@ private fun OptimizerApp() {
                     item { InfoCard("Avoid risky tools", "Do not use GFX config editors, modified game files, injectors, or third-party unlockers. They can cause instability or account penalties.") }
                 }
                 "Scopes" -> {
-                    item { SectionTitle("Scope sensitivity lab", "Reference controls only — enter values manually in BGMI") }
-                    item {
-                        CardBlock {
-                            Text("Select optic", color = Muted, fontSize = 12.sp)
-                            listOf("Red Dot / Holo", "2x Scope", "3x Scope", "4x Scope", "6x Scope", "8x Scope").forEach { scope ->
-                                Row(
-                                    Modifier.fillMaxWidth().clickable { selectedScope = scope }.padding(vertical = 9.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = selectedScope == scope, onClick = { selectedScope = scope }, colors = RadioButtonDefaults.colors(selectedColor = Cyan))
-                                    Text(scope, modifier = Modifier.padding(start = 8.dp))
-                                }
-                            }
-                            HorizontalDivider(color = Muted.copy(alpha = .2f))
-                            Text("ADS sensitivity reference", modifier = Modifier.padding(top = 12.dp))
-                            Text(sensitivity.toInt().toString(), color = Cyan, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                            Slider(value = sensitivity, onValueChange = { sensitivity = it }, valueRange = 1f..100f, colors = SliderDefaults.colors(thumbColor = Cyan, activeTrackColor = Cyan))
-                            Text("Change in small steps (3–5 points), then test sprays and tracking. No setting guarantees zero recoil.", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
-                        }
-                    }
-                    item { InfoCard("Stable aiming feel", "Keep normal scope movement enabled. Adjust ADS sensitivity and gyro in-game to reduce over-correction; this app cannot stabilise the game camera or lock the aim point.") }
-                }
-                "Gyro" -> {
-                    item { SectionTitle("Gyroscope setup", "A gradual calibration routine") }
-                    item {
-                        CardBlock {
-                            Text("Gyroscope reference value", color = Muted)
-                            Text(gyro.toInt().toString(), color = Cyan, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-                            Slider(value = gyro, onValueChange = { gyro = it }, valueRange = 50f..400f, colors = SliderDefaults.colors(thumbColor = Cyan, activeTrackColor = Cyan))
-                            Text("This is a personal tuning reference, not a value applied to BGMI. Start lower, test recoil control, then increase gradually.", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
-                        }
-                    }
-                    item { InfoCard("Calibration", "Use a flat surface, enable gyroscope in BGMI, test each optic in Training Grounds, and change one setting at a time. Recheck after changing FPS or sensitivity.") }
+                    item { SectionTitle("Controls protection", "Your BGMI settings remain exactly as you set them") }
+                    item { InfoCard("No sensitivity changes", "This app will not change camera sensitivity, ADS sensitivity, gyroscope sensitivity, button layout, control size, or any other BGMI control setting.") }
+                    item { InfoCard("No game modification", "The app does not access BGMI private data, edit game files, inject code, or automate in-game actions. You remain in full control of every setting.") }
                 }
                 "Device" -> {
                     item { SectionTitle("Device status", "Detected locally from Android system information") }
@@ -174,13 +138,9 @@ private fun OptimizerApp() {
                     item { InfoCard("Thermal care", "Avoid charging during long competitive sessions when possible. Reduce brightness if hot, keep vents unobstructed, and stop if the device becomes uncomfortably hot.") }
                 }
                 else -> {
-                    item { SectionTitle("Optimisation", "Use in-game controls to apply your chosen values") }
-                    item { InfoCard("Starter profile", "Sensitivity reference: ${sensitivity.toInt()} • Gyroscope reference: ${gyro.toInt()}") }
-                    item { Button(onClick = { page = "Home" }, colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Ink)) { Text("Back to dashboard") } }
+                    item { SectionTitle("Optimisation", "Performance guidance only") }
+                    item { InfoCard("Controls untouched", "Your BGMI sensitivity, gyroscope and button layout are never changed by this app.") }
                 }
-            }
-            if (restored && page == "Home") {
-                item { Text("Starter values restored.", color = Cyan, fontSize = 12.sp) }
             }
         }
     }
